@@ -1,0 +1,8 @@
+{'layers': [16, 20, 4], 'layer_amount': 2, 'layer_sizes': [16, 20], 'gamma': 0.99, 'dropout': 0, 'bias': True, 'lr': 0.001, 'optimizer_info': 'Adam (\nParameter Group 0\n    amsgrad: False\n    betas: (0.9, 0.999)\n    eps: 1e-08\n    lr: 0.001\n    weight_decay: 0\n)', 'lr_scheduler': '<torch.optim.lr_scheduler.ReduceLROnPlateau object at 0x7f6108e6b748>'}
+
+
+[1360.56 1389.68 1485.52 1435.52 1447.56 1588.6  1587.4  1594.16 1473.04
+ 1597.24 1620.68 1595.76 1603.52 1591.16 1551.   1608.48 1493.04 1623.48
+ 1606.4  1487.88 1600.52 1571.64 1702.64 1783.08 1658.   1529.92 1604.36
+ 1740.68 1735.96 1771.08 1883.2  1698.72 1658.72 1768.48 1647.   1670.48
+ 1702.12 1804.52 1971.28 1778.96]

@@ -1,0 +1,12 @@
+.vscode
+*.aux
+*.bbl
+*.blg
+*.log
+*.pdf
+*.synctex.gz
+*.toc
+test.py
+__pycache__
+.DS_Store
+
