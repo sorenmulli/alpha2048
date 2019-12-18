@@ -1,0 +1,7 @@
+Agent: Score (complex)
+Antal spil: 35000
+Middelværdi: 2291.36
+Middelværdi std: 162.99
+Maxtilefordeling:
+16: 0.05\pro\\32: 1.14\pro\\64: 12.9\pro\\128: 43.1\pro\\256: 38.8\pro\\512: 3.95\pro\\
+Fejlmargin: 12.07

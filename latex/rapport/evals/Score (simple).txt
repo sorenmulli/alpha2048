@@ -1,0 +1,7 @@
+Agent: Score (simple)
+Antal spil: 35000
+Middelværdi: 2334.94
+Middelværdi std: 174.82
+Maxtilefordeling:
+16: 0.03\pro\\32: 1.08\pro\\64: 11.9\pro\\128: 42.6\pro\\256: 40.1\pro\\512: 4.24\pro\\1024: 0.00\pro\\
+Fejlmargin: 12.95

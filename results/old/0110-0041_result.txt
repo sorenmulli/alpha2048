@@ -1,0 +1,30 @@
+Ukendt commit-sha.
+Parametre:layers: [16, 16, 4]
+layer_amount: 2
+layer_sizes: [16, 16]
+gamma: 0.99
+dropout: 0
+bias: True
+lr: 0.0005
+nochange_punish: 0
+optimizer_info: Adam (
+Parameter Group 0
+    amsgrad: False
+    betas: (0.9, 0.999)
+    eps: 1e-08
+    lr: 0.0005
+    weight_decay: 0
+)
+rewarder: ScoreChange
+nbatches: 2000
+batchsize: 50
+determinism: [True, True]
+startbatch: 300
+
+
+tensor([6246.1602, 6564.3198, 6772.6802,  ..., 2841.4800, 2647.2400,
+        2911.1201])
+
+
+[3885.48159424 4199.42649292 4497.37499023 ... 1834.33590454 1716.25840515
+ 1590.70990601]

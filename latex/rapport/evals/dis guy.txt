@@ -1,0 +1,6 @@
+Agent: dis guy
+Antal spil: 30000
+Middelværdi: 2328.30
+Middelværdi std: 168.53
+Maxtilefordeling:
+16: 0.1\pro\\32: 1.1\pro\\64: 12\pro\\128: 42\pro\\256: 40\pro\\512: 4.6\pro\\1024: 0.0\pro\\

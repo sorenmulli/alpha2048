@@ -1,0 +1,7 @@
+Agent: Tilfældige træk
+Antal spil: 35000
+Middelværdi: 1094.64
+Middelværdi std: 74.09
+Maxtilefordeling:
+8: 0.00\pro\\16: 0.30\pro\\32: 6.76\pro\\64: 37.7\pro\\128: 47.5\pro\\256: 7.71\pro\\512: 0.02\pro\\
+Fejlmargin: 5.49

@@ -5,8 +5,11 @@
 *.log
 *.pdf
 *.synctex.gz
+*.synctex(busy)
 *.toc
 test.py
 __pycache__
 .DS_Store
-
+*/nogit*
+nogit*/
+.ipynb_checkpoints

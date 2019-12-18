@@ -1,26 +1,21 @@
 import numpy as np
-from copy import copy
+from copy import copy, deepcopy
 
 
 class Game2048:
 	
-	def __init__(self, n=4, deterministic = False):
-		
-		# TODO Afslut spil
+	def __init__(self, n=4, deterministic=[False, False], scorefunc=lambda x: 2*2**x):
 		
 		# Opretter spillebræt
 		self.n = n
-		self.deterministic = deterministic
-		#self.board = np.random.randint(0, 5, (n, n))
-		# self.board = np.array([
-		# 	[4, 18, 5, 6],
-		# 	[1, 1, 29, 4],
-		# 	[44, 8, 9, 10],
-		# 	[11, 12, 13, 14]
-		# ])
+		self.deterministic = deterministic  # Placering, værdi
+		self.scorefunc = scorefunc
 		self.board = np.zeros((n, n), dtype = np.int)
 		
 		self.score = 0 
+		self.bsum = 0
+		self.moves = 0
+		self.propermoves = 0
 		#Initialisering af brættet første gang, hvor 2 startbrikker skal tilføjes
 		for i in range(2):
 			# Nx2-matrix med koordinater til alle 0-elementerne på brættet
@@ -28,9 +23,26 @@ class Game2048:
 			self.zeros = np.transpose(self.zeros)
 		
 			idx, newval = self._getnew(self.zeros)
+			self.bsum += newval
+			
 			self.board[idx[0], idx[1]] = newval
-		self.zeros = self.zeros[self.zeros != idx]
+		
+		self.zeros = np.where(self.board == 0)
+		self.zeros = np.transpose(self.zeros)
 
+		# 2xn-matrix med alle brættets indeksværdier
+		# Bruges i self.var
+		self.allidx = self._coordlist()
+
+	def _coordlist(self):
+
+		"""
+		Returnerer en 2xn-matrix med alle brættets indeksværdier
+		"""
+
+		idx = np.concatenate([[np.ones(self.n)*x, np.arange(self.n)] for x in range(self.n)], axis=1)
+		
+		return idx
 	
 	def play(self, direction: int):
 		
@@ -44,12 +56,16 @@ class Game2048:
 		Returnerer 2 for tabt spil, 1 for ændret plade og 0 for uændret plade
 		"""
 		
-		self.board, zeros, change, self.score = self.move(self.board, direction)
+		self.board, zeros, change, self.score, dsum = self.move(self.board, direction)
 		self.zeros = zeros
+		self.bsum += dsum
+		self.moves += 1
+		if change in (1, 2):
+			self.propermoves += 1
 		
 		return change
 	
-	def move(self, board, direction: int, evaluate = True, scoreFunc = lambda x: 2*x**2):
+	def move(self, board, direction: int, evaluate = True):
 		
 		"""
 		Foretager et ryk i spillet baseret på direction:
@@ -63,69 +79,115 @@ class Game2048:
 		Returnerer scoren
 		"""
 		
-		# Tjekker inputvaliditet
+		# Checks input validity
 		if direction not in range(4):
 			raise IndexError("Trækket skal være et tal 0-3, men der blev angivet %s" % direction)
 		
-		iniboard = board.copy()
+		board = np.copy(board)
 		score = copy(self.score)
 
-		# Brætmatricen ændres, så der altid foretages en venstreforskydning
+		# The board matrix is rotated, so the direction is always left
 		board = np.rot90(board, direction)
 		
-		# Looper gennem rækker/søjler og foretager træk
+		# Loops through rows
 		for i in range(self.n):
 			a = board[i][board[i] != 0]
 			for k in range(a.size-1):
-				# Trækker sammen, hvis samme værdi ved siden af hinanden
+				# Compresses if values are the same
 				if a[k] == a[k+1] and a[k] != 0:
+					score += self.scorefunc(a[k])
 					a[k] += 1
 					a[k+1:] = self._shift(a[k+1:])
-					score += scoreFunc(a[k])
-			# Fylder nuller ind til sidst
+			# Fills in zeros
 			r = np.zeros(self.n)
 			r[:a.size] = a
 			board[i] = r
 		
-		# Roterer brætmatricen tilbage til udgangspunktet
+		# Rotates the board matrix back to start
 		board = np.rot90(board, 4-direction)
 		
-		# Tjekker, om en ændring er sket
-		zeros = np.where(self.board==0)
+		# Checks if a change has happened
+		zeros = np.where(board==0)
 		zeros = np.transpose(zeros)
-		if (board != iniboard).any():
+
+		if (board != self.board).any() and zeros.size:
 			change = 1
 			idx, newval = self._getnew(zeros)
+			dsum = newval
 			board[idx[0], idx[1]] = newval
-			zeros = zeros[zeros != idx]
 		else:
 			change = 0
+			dsum = 0
+	
+		zeros = np.where(board==0)
+		zeros = np.transpose(zeros)
 
-		
-		#Undersøger, om spilleren har tabt spillet	
+		# Determines whether the game is lost
 		if zeros.size == 0 and evaluate:
-			b = 0
-			for i in range(4):
-				b += self.move(board, i, evaluate = False)[2]
-			if b == 0:
-				change = 2
-		
-		return board, zeros, change, score
+			inichange = copy(change)
+			change = 2
+			try:
+				for row in np.vstack((board, board.T)):
+					for i in range(self.n - 1):
+						if row[i] and (row[i] == row[i+1]):
+							change = inichange
+							raise IndentationError
+			except IndentationError:
+				pass
+
+		return board, zeros, change, score, dsum
 	
 	def _getnew(self, z):
 		
 		"""
-		Genererer et nyt 1 eller 2 et sted i 0-koordinatvektoren z
+		Generates a new 1 or 2 from the 0 coordinate vector z
 		"""
-		if self.deterministic:
-			return z[0], 1
-			
-		zidx = np.random.randint(z.shape[0])
-		idx = z[zidx]
-		val = np.random.choice([1, 2], p=[.9, .1])
+
+		if self.deterministic[0]:  # Placering
+			idx = z[0]
+		else:
+			zidx = np.random.randint(z.shape[0])
+			idx = z[zidx]
+		
+		val = 1 if self.deterministic[1] else np.random.choice([1, 2], p=[.9, .1])
 		
 		return idx, val
-			
+	
+	def var(self, corner="all"):
+
+		"""
+		Calculates a variance measure for the board. Larger tiles being further from each other means higher variance
+		The point from which to calculate this is given by corner
+			None: Center of mass
+			0: Upper left
+			1: Upper right
+			2: Lower right
+			3: Lower left
+			"all": The corner closest to the center of mass
+		"""
+
+		flatboard = 2**self.board.reshape(self.n**2) / self.bsum
+		corners = self.allidx.T[[0, 3, -1, -4]]
+		# pref is the point from which the variance is calculated
+		if corner is None:
+			# Using the centor of masse
+			pref = np.dot(self.allidx, flatboard)
+		elif type(corner) is int:
+			# Using a specified corner
+			pref = corners[corner]
+		elif corner == "all":
+			# Using the corner nearest the center of mass
+			pref = np.dot(self.allidx, flatboard)
+			dists = np.empty(4)
+			for i in range(4):
+				dists[i] = np.linalg.norm(pref-corners[i])
+			pref = corners[np.argmin(dists)]
+
+		# Sums the distance from each tile to pref multiplied by the tile values
+		rs = np.linalg.norm(self.allidx.T-pref, axis=1)
+		return np.dot(rs, flatboard)
+
+
 	@staticmethod
 	def _shift(v):
 		
@@ -139,3 +201,23 @@ class Game2048:
 		e[-1] = 0
 		e[:-1] = v[1:]
 		return e
+	
+	def __str__(self):
+
+		return "\n".join((
+			"Score: %i" % self.score,
+			str(self.board)
+		))
+
+
+# g = Game2048()
+# g.board = np.array([
+# 	[1,3,1,6],
+# 	[2,1,4,7],
+# 	[3,4,2,1],
+# 	[0,0,0,0]
+# ])
+# g.zeros = np.transpose(np.where(g.board==0))
+# g.play(3)
+# print(g)
+

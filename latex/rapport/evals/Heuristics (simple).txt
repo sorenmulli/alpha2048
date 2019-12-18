@@ -1,0 +1,7 @@
+Agent: Heuristics (simple)
+Antal spil: 35000
+Middelværdi: 2154.55
+Middelværdi std: 166.82
+Maxtilefordeling:
+16: 0.08\pro\\32: 1.95\pro\\64: 14.7\pro\\128: 45.7\pro\\256: 33.6\pro\\512: 3.99\pro\\1024: 0.01\pro\\
+Fejlmargin: 12.36

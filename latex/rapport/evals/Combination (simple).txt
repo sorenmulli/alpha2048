@@ -1,0 +1,7 @@
+Agent: Combination (simple)
+Antal spil: 35000
+Middelværdi: 2156.52
+Middelværdi std: 162.02
+Maxtilefordeling:
+16: 0.04\pro\\32: 1.39\pro\\64: 14.8\pro\\128: 43.9\pro\\256: 35.5\pro\\512: 4.39\pro\\1024: 0.02\pro\\
+Fejlmargin: 12.00

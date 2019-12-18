@@ -1,0 +1,7 @@
+Agent: Variance (complex)
+Antal spil: 35000
+Middelværdi: 1473.43
+Middelværdi std: 117.91
+Maxtilefordeling:
+8: 0.14\pro\\16: 1.74\pro\\32: 7.94\pro\\64: 26.9\pro\\128: 43.2\pro\\256: 19.5\pro\\512: 0.53\pro\\
+Fejlmargin: 8.74

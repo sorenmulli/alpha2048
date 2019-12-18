@@ -1,0 +1,7 @@
+Agent: Variance (simple)
+Antal spil: 35000
+Middelværdi: 2226.05
+Middelværdi std: 148.07
+Maxtilefordeling:
+16: 0.04\pro\\32: 1.31\pro\\64: 11.8\pro\\128: 44.2\pro\\256: 40.2\pro\\512: 2.41\pro\\
+Fejlmargin: 10.97

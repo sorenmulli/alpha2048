@@ -1,95 +1,175 @@
 import numpy as np
-import matplotlib.pyplot as plt
+import torch
+from torch.autograd import Variable
 
+from glob import glob
 from os import chdir
 from os.path import dirname, realpath
+from sys import argv
 from datetime import datetime
+chdir(realpath(dirname(__file__)))
 
-# Prøver at give python højere prioritet
-#try:
-#	nice(-20)
-#except PermissionError:
-#	pass
+try:
+	from git import Repo
+except (ImportError, ModuleNotFoundError):
+	print("Installer gitpython, din fisk")
 
-from game import Game2048
-from standardpolicy import PolicyLearner2048
 import algorithms as alg
+from game import Game2048
+from utilities import evalplot, trainplot, Agent, max_tile_distribution, bootstrap
+from learner import PolicyLearner2048
+from policy import Policy
+from prelearn import create_pretrained
+import reward_functions as rf
 
+# Defines thread
+if len(argv) == 2:
+	THREAD = int(argv[1])
+else:
+	THREAD = 0
 
-def rollingavg(values, n):
+# Defines paths
+resultdir = realpath("../results") + "/"
+create_time = datetime.now().strftime('%m%d-%H%M%S')
+stdpath = "{dir}{time}_t{thread}_".format(dir=resultdir, time=create_time, thread=THREAD)
+PATHS = {
+	"plot_train": stdpath + "plot_train.png",
+	"plot_eval": stdpath + "plot_eval.png",
+	"log_train": stdpath + "log_train.txt",
+	"log_eval": stdpath + "log_eval.txt",
+	"model": stdpath + "model.pt",
+	"pretrained": realpath("../pretrained_models") + "/%s_t%i_pretrained.pt" % (create_time, THREAD)
+}
 
-	"""
-	Returnerer et løbende gennemsnit baseret på n elementer til hver side
-	"""
+def run_evaluation(paths, agent, evals=10000, with_show=True):
 
-	if n == 0:
-		return values
+	# Evaluates an agent
 
-	weightvec = np.concatenate((np.arange(1, n+1), np.arange(n-1, 0, -1)))
+	threadstr = "T%i" % THREAD
+	scores = np.empty(evals)
+	maxtiles = np.empty(evals)
 
-	values = np.concatenate((np.zeros(n), values, np.zeros(n)))
-
-	weightedvalues = values.copy()
-	
-	for i in range(n, values.size-n):
-		weightedvalues[i] = np.sum(values[i-n+1:i+n] * weightvec) / n**2
-	
-	return weightedvalues[n+1:-n-1]
-
-
-def run(func, n):
-	results = np.zeros(n)
-	maxVals = np.zeros(n)
-	
-	for i in range(n):
-		print(i)
-		results[i], maxVals[i] = playAGame(func)
-
-	print(np.mean(results), np.std(results), "\n", np.mean(2**maxVals), 2**np.max(maxVals))
-
-	plt.hist(results, 100)
-	plt.show()
-
-def playAGame(func):
-	game = Game2048()
-	count = 0
-
-	while True:
-		
-
-		direction = func(game, count)
-		count += 1
-
-		if game.play(direction) == 2:
-			maxValue = np.max(game.board)
-			break
-
-	return game.score, maxValue
-
-def runTraining():
-	#Gemmer fil-stedet og tidspunktet til at gemme resultaterne
-	resultdir = dirname(realpath(__file__)).replace('src', 'results/')
-	createdTime = datetime.now().strftime('%m%d-%H%M')
-	#Et standard-fil-sted til at gemme modellen
-	modelsdir  = dirname(realpath(__file__)) + '/saved_models/model_{0}.pt'.format(createdTime)
-	
-	#Opretter learneren med policy-netværket inde i sig og træningen påbegyndes
-	N = PolicyLearner2048([16, 16, 4], with_bias=True, learnrate=1e-3, dropout = 0) #Angiver dimensionerne på lagene
-	N.load_model('/home/sorenwh/Dropbox/DTU/1 Semester/Intro til intelligente systemer/PROJEKT/alpha2048/src/saved_models/model_0108-1134.pt')
-	N.train(350, 50, save_model = modelsdir, auto_save_period=50, current_batch=N.current_batch)  # Antal batches og antal spil pr. batch - hvis du ikke vil gemme modellen, skal du sætte denne til None
-	
-	
-	#Skriver resultaterne med gennemsnit-scoren og info om netværket 
-	file_out = open("{0}result_{1}.txt".format(resultdir, createdTime), 'w+' )
-	file_out.write(str(N.params) + "\n\n\n" + str(N.scoremeans) + "\n\n\n" + str(rollingavg(N.scoremeans, N.params["batches"]//10)))
+	agentstr = "Agent: %s\n" % agent.displayname
+	file_out = open(paths["log_eval"], "w+", encoding="utf-8")
+	file_out.write(agentstr)
 	file_out.close()
 	
-	#Gemmer et plot med gennemsnits-scoren og viser det 
-	plt.plot(N.scoremeans, "o")
-	plt.plot(rollingavg(N.scoremeans, N.params["nbatches"]//10))
-	plt.savefig("{0}plot_{1}.png".format(resultdir, createdTime))
-	plt.show()
-	
+	for i in range(evals):
+		# Starts new game
+		game = Game2048()
+		change = 0
+		
+		while change != 2:
+			choice = agent.make_a_move(game)
+			change = game.play(choice) 
+		
+		scores[i] = game.score
+		maxtiles[i] = 2 ** np.max(game.board)
+		print(threadstr, i, game.score, 2**np.max(game.board))
 
+	# String with evaluation results
+	resstr = "Gns. score: {0}, std. på score: {1}\nMaxtile: {2}, gns. maxtile: {3}\nFord. af maxtile: {4}".format(
+	int(np.mean(scores)), int(np.std(scores)),
+	int(np.max(maxtiles)), round(np.mean(maxtiles), 2),
+	max_tile_distribution(maxtiles))
+	print(threadstr, resstr)
+
+	# Bootstrap statistics
+	boot_mu, boot_std = bootstrap(scores)
+	boot_str = "BOOTSTRAP: Gns. score: %i, std. på score: %i" % (boot_mu, boot_std)
+	
+	print(threadstr, boot_str)
+	
+	# Writes log file
+	file_out = open(paths["log_eval"], "a", encoding="utf-8")
+	file_out.write(resstr+"\n"+boot_str + "\n")
+	file_out.write("Score\tMaxtile\n")
+	for s, m in zip(scores, maxtiles):
+		file_out.write("%i\t%i\n" % (s, m))
+	file_out.close()
+
+	# Creates plot
+	evalplot(scores, maxtiles, agent, paths["plot_eval"], with_show=with_show)
+
+
+def run_training(paths, rewarder=rf.ScoreChange(), Nparams={},
+		trainparams={}, load=None, evals=0, with_plots=True):
+	# Trains an agent
+
+	# Creates a learner object
+	N = PolicyLearner2048(**Nparams, thread=THREAD)
+	
+	# Loads a previously saved model
+	if load:
+		N.load_model(load)
+	
+	# Does the actual training
+	rundata = N.train(**trainparams, rewarder=rewarder, save_model=paths["model"])
+	
+	# Logs the results of the training
+	file_out = open(paths["log_train"], 'w+', encoding="utf-8")
+	try:
+		repo = Repo(search_parent_directories=True)
+		sha = repo.head.object.hexsha
+		gitmsg = "Kørt på commit-sha %s.\n\n" % sha
+	except:
+		gitmsg = "Ukendt commit-sha.\n\n"
+	file_out.write(gitmsg)
+	n = int(np.sqrt(N.params["nbatches"] - N.params["startbatch"])) // 2
+	file_out.write(
+		"Parametre:" + "\n".join(["%s: %s" % (kw, N.params[kw]) for kw in N.params]) + "\n\n"
+	)
+	file_out.write("Gennemsnitsscore\tMaxtile\n")
+	for s, m in zip(rundata["scoremeans"], rundata["maxtilemeans"]):
+		file_out.write("%i\t%i\n" % (s, m))
+	file_out.close()
+
+	# Plots training results
+	trainplot(N, rundata, n, paths["plot_train"], with_show=with_plots)
+
+	# Evaluates agent if desired
+	if evals:
+		agent = Agent()
+		agent.from_saved_model(paths["model"])
+		run_evaluation(paths, agent, evals, with_show=with_plots)
+
+
+def run(kwargs, with_plots=False, mode="train"):
+
+	# Starts a job
+	if mode == "train":
+		run_training(PATHS, **kwargs, with_plots=with_plots)
+	elif mode == "test":
+		run_evaluation(PATHS, **kwargs, with_show=with_plots)
+
+# All jobs to be run
+schedules = (
+	{
+		"agent": Agent("../results/0121-082659_t0_model.pt"),
+		"evals": 25000
+	},
+	{
+		"agent": Agent("../results/0121-082659_t1_model.pt"),
+		"evals": 25000
+	},
+	{
+		"agent": Agent("../results/0122-103804_t2_model.pt"),
+		"evals": 25000
+	},
+	{
+		"agent": Agent("../results/0122-103816_t0_model.pt"),
+		"evals": 25000
+	},
+)
+
+# Starts the thread called from threader.py
 if __name__ == "__main__":
-	runTraining()
+	
+	run(
+		schedules[THREAD],
+		with_plots=False,
+		mode="test"
+	)
+
+
+

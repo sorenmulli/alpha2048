@@ -1,0 +1,74 @@
+\documentclass[12pt, fleqn]{article}
+
+\usepackage{../SpeedyGonzales}
+\usepackage{../MediocreMike}
+%\usepackage{C:/Users/Asger/Dropbox/Programmering/LaTeX/EndLosung/MediocreMike}
+%\usepackage{C:/Users/Asger/Dropbox/Programmering/LaTeX/EndLosung/Blastoise}
+
+%\title{Alpha2048-eksperiment}
+%\author{Asger Schultz (s183912)}
+\date{\today}
+
+\pagestyle{plain}
+\fancyhf{}
+%\lhead{Asger Schultz\\s183912}
+%\chead{#}
+%\rhead{#}
+\rfoot{Side \thepage{} af \pageref{LastPage}}
+
+\graphicspath{{Billeder/}}
+
+\begin{document}
+	
+%\maketitle
+%\thispagestyle{fancy}
+%\tableofcontents
+\pagestyle{empty}
+
+\section*{Alpha2048 - Experimental Methods}
+Asger Schultz, Oskar Wiese og Søren Winkel Holm\\
+\today\\
+This is a brief summary of the experimental protocol.
+\subsection{The Game}
+--Created game ourselves in numpy.
+\subsection{Model Training Protocol}
+
+\paragraph{Observation space and action space}
+-- The observation space: 16 possible tiles
+\\
+-- Feature transformation: Using hot one representation, the vector consisting of 16 values is transformed into a 16x16 matrix with binary values. Each row in the matrix corresponds to a tile-value (2, 4, 8 ...) and each column is a position on the board. (it's virtually impossible to achieve tiles higher than $2^{16}$).\\ 
+-- This allows different values in the same position to activate different input neurons yielding more network flexibility\\
+--Action space: 4 possible actions corresponding to 4 output neurons are interpreted as probabilities where each action is the optimal action given the input. 
+\paragraph*{The Policy Network}
+--Used PyTorch Neural Net module inspired by torch example.\\
+--Linear, sequential layers with ReLU and Dropout after each layers. After last layer: softmax to use output as probabilites.\\
+-- The network achitecture is subject to the experiment: Half of the runs are run with a single hidden layer of 16 neurons, the other is run with two hidden layers of 100 and 50 neurons.
+\paragraph*{Policy Update with Gradients}
+--Used PyTorch autograd module inspired by torch-example.\\
+--Used PyTorch-optimizer Adam with a max learning rate of $0.01$.
+\paragraph*{Rewarders}
+-- A number of different ways to reward the policy network is used. This is subject to the experiment.
+--They all give a certain numerical reward each turn based on the game state. The reward is saved in a list and after a single game, the entire reward is saved with a list of all the actions taken by the agent.
+\paragraph*{Batch Learning}
+-- The network feed-forwards 50 games by sampling from action space using the output neurons as a probability distribution. The gradients, chosen actions and rewards for each game are tracked.\\
+-- The reason for using random sampling from output neurons is to explore other strategies than the current one and to keep the learning going.\\
+-- After the entire batch, the reward for each game is inserted into the gradient for each action sampled and backpropagation is done.\\ 
+-- The results of backprop. for all games are used to update parameters using the optimizing algorithm Adam which takes learning rate of each parameter group into consideration.\\
+-- NB: We hard-code the fact that the network is not allowed to sample actions that result in zero difference on the board. This is to avoid the network being stuck in long loops and using too much time during training.
+\subsection{Model Evaluation Protocol}
+--The 10 different models with 5 different reward-policies and 2 different network complexities are compared.
+\paragraph{Collecting playing results}
+--A sample size is calculated based on desired margin of error and confidence level (ca. 10000)\\
+--The game is played by feed-forwarding the game board each turn and choosing the action that has the highest output activation ($argmax(outputlayer)$). Sampling is not done here, as exploration is not necessary when not in a learning setting.\\ 
+-- The network is still not allowed to choose actions that does not lead to any change in the game.
+\paragraph{Analysis of Results}
+The score is used as primary metric for the performance of agents. To be able to compare performance of different agents, confidence intervals related to the mean score are calculated. Because the score over \textit{n} runs is not expected to be normally distributed, a bootstrapping method is used to produce comparable confidence intervals.
+
+For each population of \textit{N} scores, \textit{N} samples each of size \textit{N} are randomly sampled from the population with resampling of same observation allowed. For each sample the mean score  is calculated. The distribution of the \textit{N} mean values is now regarded as a normal distribution for which the mean $\bar{x}^*$ and standard deviation $\sigma^*$ are calculated.
+
+The confidence interval for the bootstrapped mean is now calculated using a confidence level of 99\% meaning a critical value of $z_{\nicefrac{\alpha}{2}}=2.575$:
+\begin{equation}\label{key}
+\bar{x}^* \pm 2.575\cdot  \sqrt{\frac{\bar{x}^*(1-\bar{x}^*)}{N}}
+\end{equation}
+
+\end{document}
